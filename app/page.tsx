@@ -5,9 +5,12 @@ import { DefaultChatTransport } from 'ai';
 import { ChatInterface } from '@/components/chat/chat-interface';
 import { HeartPulse } from 'lucide-react';
 import { WELCOME_MESSAGE } from '@/lib/ai-prompts';
+import { useEffect, useRef } from 'react';
 
 export default function HomePage() {
-  const { messages, status, sendMessage } = useChat({
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const { messages, status, sendMessage, error } = useChat({
     transport: new DefaultChatTransport({
       api: '/api/chat',
     }),
@@ -18,7 +21,39 @@ export default function HomePage() {
         parts: [{ type: 'text', text: WELCOME_MESSAGE }],
       },
     ],
+    onError: (error) => {
+      console.error('Chat error:', error);
+    },
   });
+
+  // Monitor for hanging requests
+  useEffect(() => {
+    if (status === 'submitted' || status === 'streaming') {
+      // Clear any existing timeout
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+
+      // Set a 60 second timeout to detect hanging
+      timeoutRef.current = setTimeout(() => {
+        if (status === 'submitted' || status === 'streaming') {
+          console.warn('Request appears to be hanging, but AI SDK will handle retry');
+        }
+      }, 60000);
+    } else {
+      // Clear timeout when request completes
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    }
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [status]);
 
   const handleSend = (message: string) => {
     sendMessage({ text: message });
@@ -33,6 +68,18 @@ export default function HomePage() {
       .map(part => ('text' in part ? part.text : ''))
       .join(''),
   })).filter(msg => msg.content.trim() !== ''); // Remove empty messages
+
+  // Add error message if there's an error
+  const messagesWithError = error
+    ? [
+        ...simplifiedMessages,
+        {
+          id: 'error',
+          role: 'assistant' as const,
+          content: '⚠️ Sorry, I encountered an error. Please try sending your message again.',
+        },
+      ]
+    : simplifiedMessages;
 
   const isLoading = status === 'submitted' || status === 'streaming';
 
@@ -64,7 +111,7 @@ export default function HomePage() {
             {/* Chat Area - Takes up 2 columns */}
             <div className="lg:col-span-2 h-[calc(100vh-200px)] rounded-lg border bg-white dark:bg-gray-900 shadow-sm">
               <ChatInterface
-                messages={simplifiedMessages}
+                messages={messagesWithError}
                 onSend={handleSend}
                 isLoading={isLoading}
               />

@@ -44,11 +44,12 @@ export async function POST(req: Request) {
     }
 
     const result = streamText({
-      model: openai('gpt-3.5-turbo'),
+      model: openai('gpt-4o-mini'), // More reliable with tool calling and streaming
       system: SYSTEM_PROMPT,
       messages: modelMessages,
-      maxRetries: 2, // Retry failed requests up to 2 times
-      abortSignal: AbortSignal.timeout(50000), // 50 second timeout
+      maxRetries: 3, // Retry failed requests up to 3 times
+      abortSignal: AbortSignal.timeout(55000), // 55 second timeout
+      temperature: 0.7,
       tools: {
         calculateCosts: tool({
           description: CALCULATE_COSTS_FUNCTION.description,

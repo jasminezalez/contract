@@ -267,8 +267,8 @@ export interface ShowCostComparisonParams {
 // ============================================================================
 
 export const EMPLOYER_CONTRIBUTION = {
-  EMPLOYEE_BASE: 554.15,
-  PER_DEPENDENT: 443.32,
+  EMPLOYEE_BASE: 554.15, // 100% of Silver 3000 employee rate
+  PER_DEPENDENT: 258.74, // 80% of Silver 3000 child rate (323.43 * 0.80)
 } as const;
 
 export const ESTIMATED_COSTS = {
